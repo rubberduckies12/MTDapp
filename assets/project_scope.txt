@@ -1,0 +1,24 @@
+# Project Scope
+
+## App Overview
+
+This is a UK-focused SaaS platform designed to simplify Making Tax Digital (MTD) compliance for self-employed individuals and sole traders.
+
+**Key Features:**
+- **Spreadsheet Upload:** Users upload spreadsheets with earnings and expenses.
+- **AI Categorization:** The app uses AI (GPT-4) to map and categorize income and expense data.
+- **User Verification:** Users verify the categorized data.
+- **Aggregation:** Financial data is aggregated by tax periods (quarterly and yearly).
+- **HMRC Submission:** Data is submitted directly to HMRC via the MTD Income Tax API.
+- **Reminders:** Automated email reminders for upcoming MTD deadlines.
+- **Status Tracking:** Track submission status (Accepted, Pending, Failed).
+- **Dashboard:** User-friendly dashboard with a checklist for filings.
+- **Scheduled Jobs:** Reminders managed via scheduled jobs using Nodemailer.
+
+**Tech Stack:**
+- React frontend
+- Node.js/Express backend
+- PostgreSQL database
+
+**Goal:**  
+Bridge the gap between spreadsheet bookkeeping and HMRC’s digital tax requirements, empowering self-employed professionals to manage taxes effortlessly and avoid penalties.
