@@ -1,27 +1,24 @@
-// generateAuthToken.js
-// Utility to generate JWT and set as HTTP-only cookie
-
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
-const COOKIE_NAME = 'auth_token';
-const COOKIE_OPTIONS = {
-	httpOnly: true,
-	secure: process.env.NODE_ENV === 'production',
-	sameSite: 'strict',
-	maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-};
+async function generateAuthToken(accountId) {
+	try {
+		const expiresIn = '1h';
+		const token = jwt.sign({
+			id: accountId
+		}, process.env.AUTH_TOKEN_KEY, {
+			expiresIn: expiresIn
+		});
 
-/**
- * Generates a JWT for the user and sets it as a cookie on the response.
- * @param {Object} res - Express response object
- * @param {Object} user - User object (must have id)
- */
-function generateAuthToken(res, user) {
-	const payload = { id: user.id, email: user.email };
-	const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
-	res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
-	return token;
+		return token;
+	} catch(err) {
+		console.error('Error generating auth token:', err);
+		throw new Error('Failed to generate authentication token');
+	}
+}
+
+const token = req.cookies.token;
+if (!token) {
+  return res.status(401).json({ error: 'Authentication required' });
 }
 
 module.exports = generateAuthToken;

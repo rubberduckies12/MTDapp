@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const XLSX = require('xlsx');
-const db = require('../assets/dbConnect');
+
 const router = express.Router();
 
 // Use memory storage for multer
@@ -40,9 +40,11 @@ router.post('/', upload.single('file'), async (req, res) => {
     // Send rows to AI categorization
     const categorizedRows = await categorizeTransactions(rows);
 
-    // Store categorized transactions in DB
+
+    // Use pooled connection from app
+    const pool = req.app.get('pool');
     const insertPromises = categorizedRows.map(row =>
-      db.query(
+      pool.query(
         `INSERT INTO transactions (user_id, type, category, hmrc_category, description, amount, transaction_date, verified, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now()) RETURNING *`,
         [
@@ -60,7 +62,7 @@ router.post('/', upload.single('file'), async (req, res) => {
     await Promise.all(insertPromises);
 
     // Optionally, record the upload event (not file/metadata)
-    // await db.query('INSERT INTO uploads (user_id, uploaded_at) VALUES ($1, now())', [userId]);
+    // await pool.query('INSERT INTO uploads (user_id, uploaded_at) VALUES ($1, now())', [userId]);
 
     res.json({
       success: true,
