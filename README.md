@@ -1,4 +1,4 @@
-# MTDapp
+# QuickTax
 
 A modern SaaS platform for effortless UK Making Tax Digital (MTD) compliance.<br>
 Designed for self-employed individuals and sole traders.
@@ -44,7 +44,7 @@ Designed for self-employed individuals and sole traders.
 
 ## 🎯 Vision
 
-> <b>MTDapp bridges the gap between spreadsheet bookkeeping and HMRC’s digital tax requirements.</b>  
+> <b>QuickTax bridges the gap between spreadsheet bookkeeping and HMRC’s digital tax requirements.</b>  
 > Empowering self-employed professionals to manage taxes effortlessly, stay compliant, and avoid penalties.
 
 ---
