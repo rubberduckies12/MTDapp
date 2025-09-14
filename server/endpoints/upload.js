@@ -1,24 +1,24 @@
 const express = require('express');
 const multer = require('multer');
 const XLSX = require('xlsx');
+const { categorizeTransactions } = require('../api/taxOpenAi'); // <-- Import AI function
 
 const router = express.Router();
-
-// Use memory storage for multer
 const upload = multer({ storage: multer.memoryStorage() });
-
-// Dummy AI categorization function (replace with your actual implementation)
-async function categorizeTransactions(rows) {
-  // Example: assign 'uncategorized' to all
-  return rows.map(row => ({ ...row, hmrc_category: 'uncategorized' }));
-}
 
 // POST /upload
 router.post('/', upload.single('file'), async (req, res) => {
   try {
-    const userId = req.user.id; // Assumes authentication middleware sets req.user
+    const userId = req.user.id;
     const file = req.file;
+    const { category } = req.body; // Accept category from request body
+
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+    // Validate category
+    if (!['property', 'self_employed'].includes(category)) {
+      return res.status(400).json({ error: 'Category must be "property" or "self_employed"' });
+    }
 
     // Only accept CSV or XLSX
     const ext = file.originalname.split('.').pop().toLowerCase();
@@ -37,11 +37,10 @@ router.post('/', upload.single('file'), async (req, res) => {
     const sheet = workbook.Sheets[firstSheetName];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
-    // Send rows to AI categorization
-    const categorizedRows = await categorizeTransactions(rows);
+    // Use OpenAI to categorize and format for HMRC, passing the category
+    const categorizedRows = await categorizeTransactions(rows, category);
 
-
-    // Use pooled connection from app
+    // Store categorized transactions in DB
     const pool = req.app.get('pool');
     const insertPromises = categorizedRows.map(row =>
       pool.query(
@@ -61,12 +60,10 @@ router.post('/', upload.single('file'), async (req, res) => {
     );
     await Promise.all(insertPromises);
 
-    // Optionally, record the upload event (not file/metadata)
-    // await pool.query('INSERT INTO uploads (user_id, uploaded_at) VALUES ($1, now())', [userId]);
-
+    // Respond with the HMRC-ready JSON
     res.json({
       success: true,
-      transactions: categorizedRows
+      transactions: categorizedRows // This is now formatted for HMRC
     });
   } catch (err) {
     console.error(err);

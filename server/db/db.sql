@@ -13,6 +13,7 @@ CREATE TABLE users (
 CREATE TABLE uploads (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT CHECK (category IN ('property', 'self_employed')) NOT NULL DEFAULT 'self_employed',
     file_path TEXT,
     original_filename TEXT,
     file_type TEXT CHECK (file_type IN ('csv', 'xlsx')),
@@ -38,6 +39,9 @@ CREATE TABLE transactions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+ALTER TABLE transactions
+ADD COLUMN category TEXT CHECK (category IN ('property', 'self_employed'));
+
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX idx_transactions_upload_id ON transactions(upload_id);
 
@@ -53,6 +57,9 @@ CREATE TABLE reports (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+ALTER TABLE reports
+ADD COLUMN category TEXT CHECK (category IN ('property', 'self_employed'));
 
 CREATE INDEX idx_reports_user_id ON reports(user_id);
 

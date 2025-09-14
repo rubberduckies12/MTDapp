@@ -9,20 +9,39 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  */
 async function categorizeTransactions(rows) {
   const prompt = `
-You are a tax assistant for UK Making Tax Digital (MTD).
-For each transaction, determine:
-- type: 'income' or 'expense'
-- category: a suitable business category (e.g., travel, office, marketing)
-- hmrc_category: the best-fit HMRC MTD category (if possible)
+You are a UK Making Tax Digital (MTD) assistant.
 
-Return an array of objects, each with all original fields plus 'type', 'category', and 'hmrc_category'.
+You will be given a list of raw transactions.  
+For each transaction, output a JSON object with these fields:
+
+- description (string)
+- amount (number, 2 decimal places)
+- transaction_date (YYYY-MM-DD or null)
+- type ("income" or "expense")
+- business_category (general label like "Repairs", "Travel", "Sales")
+- hmrc_category (MUST be one of the following depending on context):
+
+For self-employment:
+[CostOfGoods, WagesAndStaffCosts, CarVanTravelExpenses, RentRatesPowerInsurance,
+RepairsAndMaintenance, PhoneInternetOfficeCosts, AdvertisingMarketingEntertainment,
+ProfessionalFees, InterestAndBankCharges, OtherAllowableBusinessExpenses]
+
+For property:
+[RentIncome, OtherPropertyIncome, RepairsAndMaintenance, LoanInterestAndOtherFinancialCosts,
+LegalManagementOtherProfessionalFees, ServicesAndGroundRents, Insurance,
+UtilitiesAndPropertyCharges, OtherPropertyExpenses]
+
+For VAT:
+[StandardRatedSales, ZeroRatedSales, ExemptSales, PurchasesWithVAT, PurchasesNoVAT]
+
+⚠️ Output a valid JSON array only. No explanations, no markdown.
 
 Transactions:
 ${JSON.stringify(rows, null, 2)}
 `;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4.5-turbo", // Use GPT-4.5 Turbo model
+    model: "gpt-4.5-turbo",
     messages: [
       { role: "system", content: "You are a helpful assistant for UK tax categorization." },
       { role: "user", content: prompt }
@@ -31,20 +50,44 @@ ${JSON.stringify(rows, null, 2)}
     max_tokens: 1500
   });
 
-  // Try to extract JSON from the response
+  // Defensive parsing: handle code fences, extra text, and malformed JSON
   let categorized;
   try {
-    const content = response.choices[0].message.content;
-    // Try to extract JSON from markdown code block if present
-    const match = content.match(/```json([\s\S]*?)```/);
-    if (match) {
-      categorized = JSON.parse(match[1]);
-    } else {
-      categorized = JSON.parse(content);
+    let content = response.choices[0].message.content.trim();
+
+    // Remove code fences if present
+    if (content.startsWith('```json')) {
+      content = content.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (content.startsWith('```')) {
+      content = content.replace(/^```/, '').replace(/```$/, '').trim();
+    }
+
+    // Try to find the first JSON array in the response
+    const firstBracket = content.indexOf('[');
+    const lastBracket = content.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket !== -1) {
+      content = content.substring(firstBracket, lastBracket + 1);
+    }
+
+    categorized = JSON.parse(content);
+    if (!Array.isArray(categorized)) {
+      throw new Error("Parsed content is not an array");
     }
   } catch (e) {
     throw new Error("Failed to parse AI response: " + e.message);
   }
+
+  // Normalize outputs
+  categorized = categorized.map(row => ({
+    description: row.description || '',
+    amount: Number(parseFloat(row.amount).toFixed(2)),
+    transaction_date: row.transaction_date
+      ? new Date(row.transaction_date).toISOString().split('T')[0]
+      : null,
+    type: row.type?.toLowerCase() === 'income' ? 'income' : 'expense',
+    business_category: row.business_category || null,
+    hmrc_category: row.hmrc_category || null
+  }));
 
   return categorized;
 }
