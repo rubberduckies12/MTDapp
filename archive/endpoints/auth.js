@@ -1,6 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const generateAuthToken = require('../assets/generateAuthToken');
+const generateAuthToken = require('../../server/utils/generateAuthToken');
 const router = express.Router();
 
 // Registration endpoint

@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const XLSX = require('xlsx');
-const { categorizeTransactions } = require('../api/taxOpenAi'); // <-- Import AI function
+const { categorizeTransactions } = require('../../server/api/taxOpenAi'); // <-- Import AI function
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
