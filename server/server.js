@@ -5,6 +5,13 @@ const cookieParser = require('cookie-parser');
 const db = require('./utils/dbConnect');
 const authenticate = require('./middleware/authenticate');
 
+// Import routers
+const authRouter = require('./routes/auth');
+const filesRouter = require('./routes/files');
+const transactionsRouter = require('./routes/transactions');
+const submissionsRouter = require('./routes/submissions');
+const notificationsRouter = require('./routes/notifications');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -33,9 +40,13 @@ app.use(cookieParser());
 app.set("pool", db.pool);
 
 // --- Public Routes ---
+app.use('/auth', authRouter); // No authentication required for login/register
 
 // --- Protected Routes ---
-
+app.use('/files', authenticate, filesRouter);
+app.use('/transactions', authenticate, transactionsRouter);
+app.use('/submissions', authenticate, submissionsRouter);
+app.use('/notifications', authenticate, notificationsRouter);
 
 // --- Example Health Check ---
 app.get('/', (req, res) => {
