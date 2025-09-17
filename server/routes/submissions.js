@@ -1,10 +1,11 @@
 const express = require('express');
 const { Pool } = require('pg');
 const { authenticate } = require('../middleware/authenticate');
-const hmrcApi = require('../services/hmrcAPI'); // Service for interacting with HMRC API
+const hmrcApi = require('../services/hmrcAPI');
+const { aggregateForHMRC } = require('../services/aggregator'); // <-- Import aggregator
 
 const router = express.Router();
-const pool = new Pool(); // Use your database connection pool
+const pool = new Pool();
 
 // --- Endpoints ---
 
@@ -59,26 +60,25 @@ router.post('/', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Aggregate verified transactions for the given period
+    // Get verified transactions for the period
     const transactionsResult = await pool.query(
-      `SELECT date, description, amount, type, category_user
+      `SELECT date, description, amount, type, hmrc_category, status
        FROM transactions
        WHERE user_id = $1 AND status = 'verified' AND date BETWEEN $2 AND $3`,
       [userId, period_start, period_end]
     );
-
     const transactions = transactionsResult.rows;
 
     if (transactions.length === 0) {
       return res.status(400).json({ error: 'No verified transactions found for the given period' });
     }
 
-    // Build HMRC-compliant payload
-    const payload = {
-      period_start,
-      period_end,
-      transactions,
-    };
+    // Use aggregator to build HMRC-compliant payload
+    const payload = aggregateForHMRC(transactions, {
+      periodStartDate: period_start,
+      periodEndDate: period_end,
+      submissionType: type
+    });
 
     // Call HMRC API to send submission
     const hmrcResponse = await hmrcApi.submit(payload, userId);
@@ -124,7 +124,7 @@ router.post('/:id/retry', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Only failed submissions can be retried' });
     }
 
-    // Retry the submission
+    // Retry the submission using the stored payload
     const hmrcResponse = await hmrcApi.submit(submission.payload, userId);
 
     // Update the submission status and response
